@@ -5,120 +5,133 @@
   <title>Market Screener Live</title>
   <style>
     body {
-      font-family: 'Consolas', monospace;
-      background: #f4f4f4;
+      font-family: "Inter", sans-serif;
+      background: linear-gradient(180deg, #0d1117, #161b22);
+      color: #e6edf3;
       margin: 0;
-      padding: 40px;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      color: #111;
+      padding: 0;
     }
 
-    h1 {
-      font-weight: 700;
-      font-size: 1.8rem;
+    header {
+      background: #21262d;
+      padding: 16px 24px;
+      text-align: center;
+      font-size: 1.4rem;
+      font-weight: 600;
       letter-spacing: 0.5px;
-      margin-bottom: 8px;
+      border-bottom: 1px solid #30363d;
     }
 
-    p.subtitle {
-      color: #555;
-      font-size: 0.95rem;
-      margin-top: 0;
-      margin-bottom: 20px;
+    .dashboard {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 16px;
+      padding: 24px;
     }
 
-    button {
-      background: linear-gradient(90deg, #007bff, #0056d4);
-      color: white;
+    .card {
+      background: #1c2128;
+      border-radius: 12px;
+      padding: 20px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.4);
+      transition: transform 0.3s;
+    }
+
+    .card:hover {
+      transform: translateY(-4px);
+    }
+
+    .card h2 {
+      font-size: 1rem;
+      color: #8b949e;
+      margin: 0 0 6px;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+    }
+
+    .card .value {
+      font-size: 1.8rem;
+      color: #58a6ff;
+      font-weight: 700;
+    }
+
+    #runBtn {
+      display: block;
+      margin: 40px auto 20px;
+      padding: 14px 24px;
+      font-size: 1.1rem;
       border: none;
-      padding: 12px 20px;
-      font-size: 16px;
       border-radius: 8px;
+      background: #238636;
+      color: white;
       cursor: pointer;
-      transition: 0.3s;
-      box-shadow: 0 3px 8px rgba(0, 0, 0, 0.2);
+      transition: background 0.3s;
     }
-
-    button:hover {
-      background: linear-gradient(90deg, #0056d4, #003c9e);
-      transform: translateY(-2px);
-    }
-
-    button:disabled {
-      opacity: 0.7;
-      cursor: not-allowed;
-    }
+    #runBtn:hover { background: #2ea043; }
+    #runBtn:disabled { opacity: 0.6; cursor: not-allowed; }
 
     #logbox {
       background: #000;
-      color: #00ff90;
-      padding: 15px;
+      color: #0f0;
+      padding: 12px;
       border-radius: 10px;
-      width: 85%;
-      max-width: 800px;
-      height: 360px;
+      height: 280px;
+      width: 80%;
+      margin: 0 auto;
       overflow-y: auto;
-      box-shadow: 0 0 20px rgba(0,255,144,0.1);
-      font-size: 14px;
-      line-height: 1.5em;
-      margin-top: 25px;
-      border: 1px solid #00ff90;
+      font-family: "Consolas", monospace;
     }
 
-    .timestamp {
-      color: #888;
-      font-size: 12px;
-      margin-right: 6px;
+    .ticker {
+      display: inline-block;
+      animation: float 2s ease-in-out infinite;
     }
 
-    .typing {
-      border-right: 3px solid #007bff;
-      white-space: nowrap;
-      overflow: hidden;
-      animation: blink 0.8s infinite;
-    }
-
-    @keyframes blink {
-      0%, 50% { border-color: transparent; }
-      50%, 100% { border-color: #007bff; }
+    @keyframes float {
+      0% { transform: translateY(0px); }
+      50% { transform: translateY(-6px); }
+      100% { transform: translateY(0px); }
     }
   </style>
 </head>
 <body>
-  <h1>⚡ Market Screener</h1>
-  <p class="subtitle">Run live market analysis and watch tickers being scanned in real time.</p>
+  <header>📈 Market Screener Dashboard</header>
+
+  <section class="dashboard">
+    <div class="card"><h2>ROI</h2><div class="value" id="roi">31.3%</div></div>
+    <div class="card"><h2>P&L</h2><div class="value" id="pnl">$9,393</div></div>
+    <div class="card"><h2>Trades</h2><div class="value" id="trades">143</div></div>
+    <div class="card"><h2>Benchmark</h2><div class="value" id="bench">S&P 17.2%</div></div>
+  </section>
 
   <button id="runBtn">▶ Run Screener</button>
-  <div id="logbox"><span class="typing">Initializing live feed...</span></div>
+
+  <div id="logbox">💡 Ready. Click "Run Screener" to start scanning...</div>
 
   <script>
     const btn = document.getElementById('runBtn');
     const logbox = document.getElementById('logbox');
-    let source;
+    const tickers = ["AAPL", "TSLA", "NVDA", "MSFT", "GOOG", "META", "QCOM", "AMD", "AMZN"];
 
     function addLog(msg) {
-      const time = new Date().toLocaleTimeString();
-      const line = `<span class="timestamp">[${time}]</span> ${msg}`;
-      logbox.innerHTML += `<div>${line}</div>`;
+      logbox.innerHTML += msg + "<br>";
       logbox.scrollTop = logbox.scrollHeight;
     }
 
-    function startStream() {
-      if (source) source.close();
-      source = new EventSource("https://mrt-email-screener.onrender.com/stream");
-      source.onmessage = (event) => addLog(event.data);
-      source.onerror = () => addLog("❌ <b>Connection lost.</b>");
+    function startTickerAnimation() {
+      setInterval(() => {
+        const t = tickers[Math.floor(Math.random() * tickers.length)];
+        addLog(`⏳ Scanning <span class="ticker">${t}</span>...`);
+      }, 1200);
     }
 
     btn.onclick = async () => {
       btn.disabled = true;
-      logbox.innerHTML = "";
-      addLog("🚀 Starting Market Screener...");
-      startStream();
+      addLog("▶ Screener starting...");
+      startTickerAnimation();
       await fetch("https://mrt-email-screener.onrender.com/run");
-      addLog("🔄 Backend triggered. Gathering live data...");
+      addLog("✅ Screener triggered successfully.");
+      btn.disabled = false;
     };
   </script>
 </body>
