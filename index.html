@@ -1,1 +1,50 @@
-<h3>Trend Confirmation Summary (7-Day Strict, 24–36d Debit Call Spreads)</h3><table border='1' cellpadding='6' cellspacing='0'><thead><tr><th>Trade</th><th>Stock Price</th><th>RSI</th><th>DMI</th><th>EMA</th><th>MACD</th><th>Earnings</th><th>Rating</th></tr></thead><tbody><tr><td>TEL 270–290 Call Spread Expiry:11-21 (Δ$0.27/Max $19.73, 25d)</td><td>$236.74</td><td>✅ Buy (74.6) ↑</td><td>✅ Bullish (+31.2/-12.0 ADX 26.5)</td><td>✅ Bullish (8>21)</td><td>✅ Bullish (5.06>3.96)</td><td><span style='color:red;'>in 2 days</span></td><td>⭐⭐⭐⭐☆ 85</td></tr></tbody></table><br>
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Market Screener Live</title>
+  <style>
+    body { font-family: Consolas, monospace; margin: 20px; background: #f7f7f7; }
+    button {
+      background: #007bff; color: white; border: none;
+      padding: 10px 16px; font-size: 16px; border-radius: 6px; cursor: pointer;
+    }
+    button:disabled { opacity: 0.6; cursor: not-allowed; }
+    #logbox {
+      background: #000; color: #0f0; padding: 10px;
+      border-radius: 6px; margin-top: 20px; height: 300px; overflow-y: scroll;
+    }
+  </style>
+</head>
+<body>
+  <h2>Market Screener (Real-Time Run)</h2>
+  <button id="runBtn">▶ Run Screener</button>
+  <div id="logbox"></div>
+
+  <script>
+    const btn = document.getElementById('runBtn');
+    const logbox = document.getElementById('logbox');
+    let source;
+
+    function addLog(msg) {
+      logbox.innerHTML += msg + "<br>";
+      logbox.scrollTop = logbox.scrollHeight;
+    }
+
+    function startStream() {
+      if (source) source.close();
+      source = new EventSource("https://your-render-service.onrender.com/stream");
+      source.onmessage = (event) => addLog(event.data);
+      source.onerror = () => addLog("❌ Connection lost.");
+    }
+
+    btn.onclick = async () => {
+      btn.disabled = true;
+      addLog("▶ Starting screener...");
+      startStream();
+      await fetch("https://your-render-service.onrender.com/run");
+      addLog("✅ Triggered backend run.");
+    };
+  </script>
+</body>
+</html>
