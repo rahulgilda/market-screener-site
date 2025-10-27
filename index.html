@@ -17,7 +17,7 @@
   </style>
 </head>
 <body>
-  <h2>Market Screener (Real-Time Run)</h2>
+  <h2>Market Screener</h2>
   <button id="runBtn">▶ Run Screener</button>
   <div id="logbox"></div>
 
@@ -33,7 +33,7 @@
 
     function startStream() {
       if (source) source.close();
-      source = new EventSource("https://your-render-service.onrender.com/stream");
+      source = new EventSource("https://mrt-email-screener.onrender.com/stream");
       source.onmessage = (event) => addLog(event.data);
       source.onerror = () => addLog("❌ Connection lost.");
     }
@@ -42,7 +42,7 @@
       btn.disabled = true;
       addLog("▶ Starting screener...");
       startStream();
-      await fetch("https://your-render-service.onrender.com/run");
+      await fetch("https://mrt-email-screener.onrender.com/run");
       addLog("✅ Triggered backend run.");
     };
   </script>
