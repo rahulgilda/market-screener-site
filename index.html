@@ -36,10 +36,7 @@
       box-shadow: 0 4px 12px rgba(0,0,0,0.4);
       transition: transform 0.3s;
     }
-
-    .card:hover {
-      transform: translateY(-4px);
-    }
+    .card:hover { transform: translateY(-4px); }
 
     .card h2 {
       font-size: 1rem;
@@ -75,11 +72,14 @@
       color: #0f0;
       padding: 12px;
       border-radius: 10px;
-      height: 280px;
+      height: 320px;
       width: 80%;
-      margin: 0 auto;
+      margin: 0 auto 40px;
       overflow-y: auto;
       font-family: "Consolas", monospace;
+      font-size: 0.95rem;
+      line-height: 1.4rem;
+      white-space: pre-wrap;
     }
 
     .ticker {
@@ -109,30 +109,52 @@
   <div id="logbox">💡 Ready. Click "Run Screener" to start scanning...</div>
 
   <script>
-    const btn = document.getElementById('runBtn');
-    const logbox = document.getElementById('logbox');
-    const tickers = ["AAPL", "TSLA", "NVDA", "MSFT", "GOOG", "META", "QCOM", "AMD", "AMZN"];
+    const runBtn = document.getElementById("runBtn");
+    const logbox = document.getElementById("logbox");
+    const STREAM_URL = "https://mrt-email-screener.onrender.com/stream";
+    const RUN_URL = "https://mrt-email-screener.onrender.com/run";
 
-    function addLog(msg) {
-      logbox.innerHTML += msg + "<br>";
+    function addLog(message) {
+      // Colorize lines based on emojis or keywords
+      let color = "#0f0"; // default green
+      if (message.includes("❌") || message.toLowerCase().includes("error")) color = "#f33";
+      else if (message.includes("⚠️")) color = "#ffb703";
+      else if (message.includes("▶️") || message.includes("🚀")) color = "#58a6ff";
+      else if (message.includes("✅")) color = "#2ea043";
+      else if (message.includes("📋") || message.includes("🌐")) color = "#a371f7";
+      else if (message.includes("📡") || message.includes("📊")) color = "#00ffff";
+
+      const span = document.createElement("span");
+      span.style.color = color;
+      span.innerHTML = message;
+      logbox.appendChild(span);
+      logbox.appendChild(document.createElement("br"));
       logbox.scrollTop = logbox.scrollHeight;
     }
 
-    function startTickerAnimation() {
-      setInterval(() => {
-        const t = tickers[Math.floor(Math.random() * tickers.length)];
-        addLog(`⏳ Scanning <span class="ticker">${t}</span>...`);
-      }, 1200);
+    function connectStream() {
+      const source = new EventSource(STREAM_URL);
+      source.onmessage = (event) => {
+        if (event.data.trim() !== "") addLog(event.data);
+      };
+      source.onerror = () => {
+        addLog("⚠️ Lost connection to stream. Reconnecting...");
+        source.close();
+        setTimeout(connectStream, 3000);
+      };
     }
 
-    btn.onclick = async () => {
-      btn.disabled = true;
-      addLog("▶ Screener starting...");
-      startTickerAnimation();
-      await fetch("https://mrt-email-screener.onrender.com/run");
-      addLog("✅ Screener triggered successfully.");
-      btn.disabled = false;
+    runBtn.onclick = async () => {
+      runBtn.disabled = true;
+      logbox.innerHTML = "▶ Screener starting...<br>";
+      addLog("⏳ Connecting to live stream...");
+      await fetch(RUN_URL).catch(() => addLog("❌ Could not trigger screener."));
+      addLog("🟢 Screener triggered successfully.");
+      runBtn.disabled = false;
     };
+
+    // Connect stream immediately on load
+    connectStream();
   </script>
 </body>
 </html>
