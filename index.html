@@ -55,7 +55,18 @@
     .small{color:var(--muted);font-size:.92rem}
 
     /* Hide any page footer entirely per request */
-    footer{display:none}
+    footer{
+      margin:24px 0 10px;
+      text-align:center;
+      color:var(--muted);
+      font-size:.9rem;
+    }
+    footer a{
+      color:var(--brand);
+      text-decoration:none;
+      font-weight:500;
+    }
+    footer a:hover{ text-decoration:underline }
     @media (max-width:860px){.stats{grid-template-columns:1fr 1fr}.scanner{grid-template-columns:1fr}.scan-img{justify-self:center}}
   </style>
 </head>
@@ -65,7 +76,7 @@
       <div class="logo">📈</div>
       <div>
         <h1>Market Screener</h1>
-        <div class="sub">24-36 day debit call spreads • RSI + DMI + EMA + MACD confirmation</div>
+        <div class="sub">Debit Call Spreads • Multi Trend Confirmation</div>
       </div>
     </header>
 
@@ -111,7 +122,11 @@
       <div id="reportBody" class="small" style="opacity:.95">Loading latest report…</div>
     </section>
 
-    <footer></footer>
+    <footer>
+      Powered by Human Intelligence · 
+      <a href="https://finance.yahoo.com/" target="_blank">Data by Yahoo Finance</a>
+    </footer>
+
   </div>
 
 <script>
