@@ -124,20 +124,27 @@
   async function loadReport() {
     const container = document.getElementById("report-container");
     container.innerHTML = "⏳ Loading latest report...";
-
+  
     try {
       const res = await fetch(
         "https://rahulgilda.github.io/market-screener-site/report.html?cache=" + Date.now(),
         { cache: "no-store" }
       );
+      if (!res.ok) throw new Error("fetch failed");
+  
       const html = await res.text();
-      container.innerHTML = html;
+  
+      // ✅ Replace old report entirely
+      container.innerHTML = "";
+      container.insertAdjacentHTML("beforeend", html);
+  
       addLog("📈 Report updated.");
-    } catch {
+    } catch (err) {
       container.innerHTML = "<p style='color:orange;'>⚠️ No screener report available yet.</p>";
       addLog("⚠️ Report not ready.");
     }
   }
+
 
   // Load latest report when page first opens
   loadReport();
