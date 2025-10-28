@@ -1,18 +1,155 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>📊 Market Screener Live Dashboard</title>
+  <style>
+    body {
+      font-family: "Segoe UI", Arial, sans-serif;
+      background-color: #0d1117;
+      color: #e6edf3;
+      text-align: center;
+      padding: 30px;
+    }
+    h1 {
+      color: #58a6ff;
+      font-size: 2em;
+      margin-bottom: 10px;
+    }
+    h2 {
+      color: #8b949e;
+      font-weight: normal;
+    }
+    #stats {
+      display: flex;
+      justify-content: center;
+      gap: 25px;
+      flex-wrap: wrap;
+      margin: 25px 0;
+    }
+    .card {
+      background: #161b22;
+      padding: 15px 25px;
+      border-radius: 12px;
+      box-shadow: 0 0 10px rgba(255, 255, 255, 0.1);
+    }
+    .card h3 {
+      margin: 0;
+      font-size: 1.4em;
+      color: #58a6ff;
+    }
+    .card p {
+      font-size: 1.1em;
+      color: #c9d1d9;
+    }
+    #runBtn {
+      background: #238636;
+      color: white;
+      border: none;
+      padding: 12px 24px;
+      border-radius: 8px;
+      font-size: 1.1em;
+      cursor: pointer;
+      transition: background 0.3s;
+    }
+    #runBtn:hover {
+      background: #2ea043;
+    }
+    #logbox {
+      margin-top: 30px;
+      background: #161b22;
+      padding: 20px;
+      border-radius: 12px;
+      text-align: left;
+      font-family: Consolas, monospace;
+      max-height: 500px;
+      overflow-y: auto;
+      box-shadow: 0 0 10px rgba(255, 255, 255, 0.1);
+    }
+    footer {
+      margin-top: 50px;
+      color: #8b949e;
+      font-size: 0.9em;
+    }
+    footer a {
+      color: #58a6ff;
+      text-decoration: none;
+    }
+  </style>
+</head>
+<body>
+  <h1>📊 Market Screener Live Dashboard</h1>
+  <h2>Track technical setups, scan live, and auto-publish reports</h2>
 
-            <html>
-              <head>
-                <title>Market Screener Report</title>
-                <style>
-                  body { font-family: Arial; background:#0d1117; color:#e6edf3; padding:20px; }
-                  table { border-collapse: collapse; width:100%; }
-                  th, td { border:1px solid #30363d; padding:8px; }
-                  th { background:#161b22; color:#58a6ff; }
-                </style>
-              </head>
-              <body>
-                <h2>📈 Market Screener Auto Report</h2>
-                <p>Last updated: 2025-10-28 02:08:40</p>
-                <p>No screener data found.</p>
-              </body>
-            </html>
-            
+  <div id="stats">
+    <div class="card"><h3>Portfolio ROI</h3><p>31.3%</p></div>
+    <div class="card"><h3>P&amp;L</h3><p>$9,393</p></div>
+    <div class="card"><h3>Total Trades</h3><p>143</p></div>
+    <div class="card"><h3>Benchmark</h3><p>S&amp;P 17.2%</p></div>
+  </div>
+
+  <button id="runBtn">▶ Run Screener</button>
+
+  <div id="logbox">💡 Ready. Click “Run Screener” to start scanning...</div>
+
+  <footer>
+    Powered by <a href="https://mrt-email-screener.onrender.com" target="_blank">Render Backend</a> · 
+    Data from <a href="https://finance.yahoo.com/" target="_blank">Yahoo Finance</a>
+  </footer>
+
+  <script>
+    const btn = document.getElementById('runBtn');
+    const logbox = document.getElementById('logbox');
+
+    function addLog(msg) {
+      const time = new Date().toLocaleTimeString();
+      logbox.innerHTML += `[${time}] ${msg}<br>`;
+      logbox.scrollTop = logbox.scrollHeight;
+    }
+
+    // Keep backend awake
+    setInterval(() => {
+      fetch("https://mrt-email-screener.onrender.com/")
+        .then(() => console.log("Backend ping OK"))
+        .catch(() => {});
+    }, 60000);
+
+    // === 🧩 Load latest published report after screener run ===
+    async function loadReport() {
+      try {
+        const res = await fetch("https://rahulgilda.github.io/market-screener-site/index.html");
+        const html = await res.text();
+        const report = document.createElement("div");
+        report.innerHTML = html;
+        report.style.margin = "40px auto";
+        report.style.width = "90%";
+        report.style.background = "#0d1117";
+        report.style.padding = "20px";
+        report.style.borderRadius = "12px";
+        report.style.boxShadow = "0 0 12px rgba(255,255,255,0.1)";
+        document.body.appendChild(report);
+      } catch (err) {
+        addLog("⚠️ Unable to load report: " + err);
+      }
+    }
+
+    btn.onclick = async () => {
+      btn.disabled = true;
+      addLog("▶ Screener starting...");
+
+      const evtSource = new EventSource("https://mrt-email-screener.onrender.com/stream");
+      evtSource.onmessage = (e) => addLog(e.data);
+      evtSource.onerror = () => addLog("⚠️ Lost connection to stream. Reconnecting...");
+
+      const res = await fetch("https://mrt-email-screener.onrender.com/run");
+      if (res.ok) addLog("🟢 Screener triggered successfully.");
+      else addLog("❌ Could not trigger screener.");
+      btn.disabled = false;
+
+      // Wait 2 minutes for Render + GitHub push to complete, then embed report
+      setTimeout(loadReport, 120000);
+    };
+  </script>
+</body>
+</html>
