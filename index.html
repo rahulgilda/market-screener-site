@@ -117,89 +117,87 @@
   const container = document.getElementById('report-container');
   let lastTimestamp = null;
 
-  function addLog(msg) {
-    const time = new Date().toLocaleTimeString();
-    logbox.innerHTML += `[${time}] ${msg}<br>`;
-    logbox.scrollTop = logbox.scrollHeight;
+  function setStatus(msg) {
+    logbox.innerHTML = msg;
   }
 
   async function loadReport(force = false) {
     try {
-      const url = "https://rahulgilda.github.io/market-screener-site/report.html?cache=" + Date.now();
-      const res = await fetch(url, { cache: "no-store" });
+      const res = await fetch("https://rahulgilda.github.io/market-screener-site/report.html?cache=" + Date.now(),
+        { cache: "no-store" });
       if (!res.ok) throw new Error("fetch failed");
-
+      
       const html = await res.text();
-
-      const timestampMatch = html.match(/Last updated:\s*([\d-:\s]+)/);
-      const timestamp = timestampMatch ? timestampMatch[1].trim() : null;
-
-      if (!force && timestamp === lastTimestamp) return false; // no change yet
-
+      const timestamp = html.match(/Last updated:\s*([\d-:\s]+)/)?.[1]?.trim();
+      if (!force && timestamp === lastTimestamp) return false;
+      
       lastTimestamp = timestamp;
       container.innerHTML = html;
-      addLog("📈 Report updated: " + (timestamp || "now"));
+      setStatus("✅ Report live: " + (timestamp || ""));
+      btn.disabled = false;
       container.scrollIntoView({ behavior: "smooth" });
-
-      return true; // updated
+      return true;
     }
     catch {
       return false;
     }
   }
 
-  async function waitForLatestReport() {
-    addLog("🔄 Waiting for GitHub Pages to update report...");
-    
-    let attempts = 0;
-    const maxAttempts = 20; // 20 * 5s = 100 sec max
-
-    const interval = setInterval(async () => {
-      attempts++;
-      const updated = await loadReport();
-      if (updated) {
-        addLog("✅ New report live!");
-        clearInterval(interval);
+  async function waitForGitHub() {
+    setStatus("⏳ Publishing results…");
+    let tries = 0;
+    const timer = setInterval(async () => {
+      tries++;
+      if (await loadReport()) clearInterval(timer);
+      if (tries >= 25) {
+        setStatus("⚠️ Report update delayed");
         btn.disabled = false;
-      }
-      if (attempts >= maxAttempts) {
-        addLog("⚠️ Timeout waiting for report update.");
-        clearInterval(interval);
-        btn.disabled = false;
+        clearInterval(timer);
       }
     }, 5000);
   }
 
-  // Load latest report on first visit
-  loadReport(true);
-
   btn.onclick = async () => {
     btn.disabled = true;
-    addLog("▶ Screener starting...");
+    container.innerHTML = "";
+    setStatus(`🚀 Starting screener…`);
 
     const evtSource = new EventSource("https://mrt-email-screener.onrender.com/stream");
 
     evtSource.onmessage = (e) => {
       const msg = e.data;
-      addLog(msg);
+
+      if (msg.includes("Pre-scanning")) {
+        // extract name for better UX: "Pre-scanning AAPL (3/8)…"
+        const cleanMsg = msg.replace("Pre-scanning ", "🔍 Checking ");
+        setStatus(cleanMsg);
+      }
+
+      if (msg.includes("Downloading batch")) {
+        setStatus("📦 " + msg.replace("📦 ", ""));
+      }
 
       if (msg.includes("Screener complete")) {
+        setStatus("✅ Scan complete! Waiting for latest report…");
         evtSource.close();
-        waitForLatestReport(); // ✅ start watching for fresh update
+        waitForGitHub();
       }
     };
 
     evtSource.onerror = () => {
-      addLog("⚠️ Lost stream connection.");
+      setStatus("⚠️ Lost connection.");
       evtSource.close();
       btn.disabled = false;
     };
 
-    const res = await fetch("https://mrt-email-screener.onrender.com/run");
-    if (res.ok) addLog("🟢 Screener triggered successfully.");
-    else addLog("❌ Could not trigger screener.");
+    const runRes = await fetch("https://mrt-email-screener.onrender.com/run");
+    if (!runRes.ok) setStatus("❌ Failed to trigger screener");
   };
+
+  // load cached report at startup
+  loadReport(true);
 </script>
+
 
 </body>
 </html>
