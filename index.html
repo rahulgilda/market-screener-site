@@ -162,7 +162,7 @@ async function fetchReportOnce(force=false){
     html = html.replace(/Trend Confirmation Summary[\s\S]*?Last updated:/i, ""); 
 
     // ✅ Remove Powered by... footer if present
-    html = html.replace(/Powered by[\s\S]*$/i, "");
+    //html = html.replace(/Powered by[\s\S]*$/i, "");
 
     // ✅ Extract UTC timestamp
     const match = html.match(/(\d{4}-\d{2}-\d{2}[\s\:]\d{2}:\d{2}:\d{2})/);
