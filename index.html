@@ -98,26 +98,28 @@
     Data from <a href="https://finance.yahoo.com/" target="_blank">Yahoo Finance</a>
   </footer>
 
-  <script>
-    const btn = document.getElementById('runBtn');
-    const logbox = document.getElementById('logbox');
+<script>
+  const btn = document.getElementById('runBtn');
+  const logbox = document.getElementById('logbox');
 
-    function addLog(msg) {
-      const time = new Date().toLocaleTimeString();
-      logbox.innerHTML += `[${time}] ${msg}<br>`;
-      logbox.scrollTop = logbox.scrollHeight;
-    }
+  function addLog(msg) {
+    const time = new Date().toLocaleTimeString();
+    logbox.innerHTML += `[${time}] ${msg}<br>`;
+    logbox.scrollTop = logbox.scrollHeight;
+  }
 
-    // Keep backend awake
-    setInterval(() => {
-      fetch("https://mrt-email-screener.onrender.com/")
-        .then(() => console.log("Backend ping OK"))
-        .catch(() => {});
-    }, 60000);
+  // Keep backend alive
+  setInterval(() => {
+    fetch("https://mrt-email-screener.onrender.com/")
+      .then(() => console.log("Backend ping OK"))
+      .catch(() => {});
+  }, 60000);
 
-    // === 🧩 Load latest published report after screener run ===
+  // Load latest report after screener finish
   async function loadReport() {
-    const res = await fetch("https://rahulgilda.github.io/market-screener-site/report.html?cache=" + Date.now());
+    const res = await fetch(
+      "https://rahulgilda.github.io/market-screener-site/report.html?cache=" + Date.now()
+    );
     const html = await res.text();
     const reportDiv = document.createElement("div");
     reportDiv.innerHTML = html;
@@ -129,23 +131,24 @@
     reportDiv.style.boxShadow = "0 0 12px rgba(255,255,255,0.1)";
     document.body.appendChild(reportDiv);
   }
-  
-  // Reload report automatically 2 mins after run
+
+  // Trigger backend scan + stream logs
   btn.onclick = async () => {
     btn.disabled = true;
     addLog("▶ Screener starting...");
+
     const evtSource = new EventSource("https://mrt-email-screener.onrender.com/stream");
     evtSource.onmessage = (e) => addLog(e.data);
     evtSource.onerror = () => addLog("⚠️ Lost connection to stream. Reconnecting...");
+
     const res = await fetch("https://mrt-email-screener.onrender.com/run");
     if (res.ok) addLog("🟢 Screener triggered successfully.");
     else addLog("❌ Could not trigger screener.");
-    btn.disabled = false;
-  
-    setTimeout(loadReport, 120000);
-  };
 
-    };
-  </script>
+    // load report 2 mins later
+    setTimeout(loadReport, 120000);
+    btn.disabled = false;
+  };
+</script>
 </body>
 </html>
