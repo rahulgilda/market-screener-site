@@ -72,7 +72,7 @@
       width: 95%;
       margin-left: auto;
       margin-right: auto;
-      background: #0d1117;
+      background: #161b22;
       padding: 20px;
       border-radius: 12px;
       box-shadow: 0 0 12px rgba(255,255,255,0.1);
@@ -88,6 +88,7 @@
     }
   </style>
 </head>
+
 <body>
   <h1>📊 Market Screener Live Dashboard</h1>
   <h2>Track technical setups, scan live, and auto-publish reports</h2>
@@ -103,7 +104,6 @@
 
   <div id="logbox">💡 Ready. Click “Run Screener” to start scanning...</div>
 
-  <!-- ✅ container for live report -->
   <div id="report-container"></div>
 
   <footer>
@@ -121,11 +121,6 @@
     logbox.scrollTop = logbox.scrollHeight;
   }
 
-  // silent backend keepalive
-  setInterval(() => {
-    fetch("https://mrt-email-screener.onrender.com/").catch(() => {});
-  }, 60000);
-
   async function loadReport() {
     const container = document.getElementById("report-container");
     container.innerHTML = "⏳ Loading latest report...";
@@ -135,37 +130,48 @@
         "https://rahulgilda.github.io/market-screener-site/report.html?cache=" + Date.now(),
         { cache: "no-store" }
       );
-      if (!res.ok) throw new Error("no report");
-      
       const html = await res.text();
       container.innerHTML = html;
       addLog("📈 Report updated.");
-    }
-    catch {
+    } catch {
       container.innerHTML = "<p style='color:orange;'>⚠️ No screener report available yet.</p>";
       addLog("⚠️ Report not ready.");
     }
   }
 
+  // Load latest report when page first opens
+  loadReport();
+
+  let evtSource = null;
+
   btn.onclick = async () => {
     btn.disabled = true;
     addLog("▶ Screener starting...");
 
-    // Streaming live logs
-    const evtSource = new EventSource("https://mrt-email-screener.onrender.com/stream");
-    evtSource.onmessage = (e) => addLog(e.data);
+    evtSource = new EventSource("https://mrt-email-screener.onrender.com/stream");
+    
+    evtSource.onmessage = (e) => {
+      const msg = e.data;
+      addLog(msg);
+
+      if (msg.includes("Screener complete")) {
+        addLog("📈 Fetching final report...");
+        loadReport();
+        evtSource.close();  // ✅ stop stream & keepalive
+        btn.disabled = false;
+      }
+    };
+
+    evtSource.onerror = () => {
+      addLog("⚠️ Live stream lost.");
+      evtSource.close();
+      btn.disabled = false;
+    };
 
     const res = await fetch("https://mrt-email-screener.onrender.com/run");
     if (res.ok) addLog("🟢 Screener triggered successfully.");
     else addLog("❌ Could not trigger screener.");
-
-    // ✅ Load results soon after scan finishes
-    setTimeout(loadReport, 3000);
-    btn.disabled = false;
   };
-
-  // ✅ Auto load latest table on page load
-  loadReport();
 </script>
 </body>
 </html>
