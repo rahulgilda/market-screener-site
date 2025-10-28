@@ -155,9 +155,15 @@
       addLog(msg);
 
       if (msg.includes("Screener complete")) {
-        addLog("📈 Fetching final report...");
-        loadReport();
-        evtSource.close();  // ✅ stop stream & keepalive
+        addLog("📈 Finalizing results...");
+        evtSource.close();
+      
+        // ✅ Force refresh newest report after a slight delay
+        setTimeout(() => {
+          addLog("📈 Fetching latest report...");
+          loadReport();  // refresh table
+        }, 5000);
+      
         btn.disabled = false;
       }
     };
