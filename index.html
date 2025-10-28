@@ -1,1 +1,170 @@
-<h3>Updated results</h3>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>📈 Market Screener Dashboard</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <style>
+    /* === GLOBAL STYLES === */
+    body {
+      font-family: "Inter", Arial, sans-serif;
+      background: linear-gradient(180deg, #0d1117, #161b22);
+      color: #e6edf3;
+      margin: 0;
+      padding: 0;
+    }
+
+    header {
+      background: #21262d;
+      padding: 18px 24px;
+      text-align: center;
+      font-size: 1.4rem;
+      font-weight: 600;
+      letter-spacing: 0.5px;
+      border-bottom: 1px solid #30363d;
+    }
+
+    /* === DASHBOARD CARDS === */
+    .dashboard {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+      gap: 16px;
+      padding: 24px;
+    }
+
+    .card {
+      background: #1c2128;
+      border-radius: 12px;
+      padding: 20px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.4);
+      transition: transform 0.3s;
+    }
+
+    .card:hover { transform: translateY(-4px); }
+
+    .card h2 {
+      font-size: 0.9rem;
+      color: #8b949e;
+      margin: 0 0 6px;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+    }
+
+    .card .value {
+      font-size: 1.6rem;
+      color: #58a6ff;
+      font-weight: 700;
+    }
+
+    /* === RUN BUTTON === */
+    #runBtn {
+      display: block;
+      margin: 36px auto 20px;
+      padding: 14px 28px;
+      font-size: 1.1rem;
+      border: none;
+      border-radius: 8px;
+      background: #238636;
+      color: white;
+      cursor: pointer;
+      transition: background 0.3s;
+    }
+
+    #runBtn:hover { background: #2ea043; }
+    #runBtn:disabled { opacity: 0.6; cursor: not-allowed; }
+
+    /* === LOG BOX === */
+    #logbox {
+      background: #000;
+      color: #0f0;
+      padding: 14px;
+      border-radius: 10px;
+      height: 320px;
+      width: 82%;
+      margin: 0 auto 60px;
+      overflow-y: auto;
+      font-family: "Consolas", monospace;
+      box-shadow: 0 0 10px rgba(0,255,0,0.1);
+    }
+
+    /* Animated floating ticker text */
+    .ticker {
+      display: inline-block;
+      animation: float 2s ease-in-out infinite;
+    }
+
+    @keyframes float {
+      0% { transform: translateY(0px); }
+      50% { transform: translateY(-6px); }
+      100% { transform: translateY(0px); }
+    }
+
+    footer {
+      text-align: center;
+      padding: 20px;
+      color: #8b949e;
+      font-size: 0.9rem;
+      border-top: 1px solid #30363d;
+    }
+
+    a { color: #58a6ff; text-decoration: none; }
+    a:hover { text-decoration: underline; }
+  </style>
+</head>
+
+<body>
+  <header>📊 Market Screener Live Dashboard</header>
+
+  <section class="dashboard">
+    <div class="card"><h2>Portfolio ROI</h2><div class="value" id="roi">31.3%</div></div>
+    <div class="card"><h2>P&amp;L</h2><div class="value" id="pnl">$9,393</div></div>
+    <div class="card"><h2>Total Trades</h2><div class="value" id="trades">143</div></div>
+    <div class="card"><h2>Benchmark</h2><div class="value" id="bench">S&amp;P 17.2%</div></div>
+  </section>
+
+  <button id="runBtn">▶ Run Screener</button>
+
+  <div id="logbox">💡 Ready. Click “Run Screener” to start scanning...</div>
+
+  <footer>
+    Powered by <a href="https://mrt-email-screener.onrender.com" target="_blank">Render Backend</a> · 
+    Data from <a href="https://finance.yahoo.com/" target="_blank">Yahoo Finance</a>
+  </footer>
+
+  <script>
+    const btn = document.getElementById('runBtn');
+    const logbox = document.getElementById('logbox');
+    const tickers = ["AAPL", "TSLA", "NVDA", "MSFT", "GOOG", "META", "QCOM", "AMD", "AMZN"];
+
+    function addLog(msg) {
+      const time = new Date().toLocaleTimeString();
+      logbox.innerHTML += `[${time}] ${msg}<br>`;
+      logbox.scrollTop = logbox.scrollHeight;
+    }
+
+    // Keep backend awake
+    setInterval(() => {
+      fetch("https://mrt-email-screener.onrender.com/")
+        .then(() => console.log("Backend ping OK"))
+        .catch(() => {});
+    }, 60000);
+
+    btn.onclick = async () => {
+      btn.disabled = true;
+      addLog("▶ Screener starting...");
+
+      // Connect to SSE stream
+      const evtSource = new EventSource("https://mrt-email-screener.onrender.com/stream");
+      evtSource.onmessage = (e) => addLog(e.data);
+      evtSource.onerror = () => addLog("⚠️ Lost connection to stream. Reconnecting...");
+
+      // Trigger backend screener
+      const res = await fetch("https://mrt-email-screener.onrender.com/run");
+      if (res.ok) addLog("🟢 Screener triggered successfully.");
+      else addLog("❌ Could not trigger screener.");
+
+      btn.disabled = false;
+    };
+  </script>
+</body>
+</html>
