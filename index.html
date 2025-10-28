@@ -67,6 +67,16 @@
       overflow-y: auto;
       box-shadow: 0 0 10px rgba(255, 255, 255, 0.1);
     }
+    #report-container {
+      margin-top: 40px;
+      width: 95%;
+      margin-left: auto;
+      margin-right: auto;
+      background: #0d1117;
+      padding: 20px;
+      border-radius: 12px;
+      box-shadow: 0 0 12px rgba(255,255,255,0.1);
+    }
     footer {
       margin-top: 50px;
       color: #8b949e;
@@ -93,6 +103,9 @@
 
   <div id="logbox">💡 Ready. Click “Run Screener” to start scanning...</div>
 
+  <!-- ✅ container for live report -->
+  <div id="report-container"></div>
+
   <footer>
     Powered by <a href="https://mrt-email-screener.onrender.com" target="_blank">Render Backend</a> · 
     Data from <a href="https://finance.yahoo.com/" target="_blank">Yahoo Finance</a>
@@ -108,47 +121,51 @@
     logbox.scrollTop = logbox.scrollHeight;
   }
 
-  // Keep backend alive
+  // silent backend keepalive
   setInterval(() => {
-    fetch("https://mrt-email-screener.onrender.com/")
-      .then(() => console.log("Backend ping OK"))
-      .catch(() => {});
+    fetch("https://mrt-email-screener.onrender.com/").catch(() => {});
   }, 60000);
 
-  // Load latest report after screener finish
   async function loadReport() {
-    const res = await fetch(
-      "https://rahulgilda.github.io/market-screener-site/report.html?cache=" + Date.now()
-    );
-    const html = await res.text();
-    const reportDiv = document.createElement("div");
-    reportDiv.innerHTML = html;
-    reportDiv.style.margin = "40px auto";
-    reportDiv.style.width = "90%";
-    reportDiv.style.background = "#0d1117";
-    reportDiv.style.padding = "20px";
-    reportDiv.style.borderRadius = "12px";
-    reportDiv.style.boxShadow = "0 0 12px rgba(255,255,255,0.1)";
-    document.body.appendChild(reportDiv);
+    const container = document.getElementById("report-container");
+    container.innerHTML = "⏳ Loading latest report...";
+
+    try {
+      const res = await fetch(
+        "https://rahulgilda.github.io/market-screener-site/report.html?cache=" + Date.now(),
+        { cache: "no-store" }
+      );
+      if (!res.ok) throw new Error("no report");
+      
+      const html = await res.text();
+      container.innerHTML = html;
+      addLog("📈 Report updated.");
+    }
+    catch {
+      container.innerHTML = "<p style='color:orange;'>⚠️ No screener report available yet.</p>";
+      addLog("⚠️ Report not ready.");
+    }
   }
 
-  // Trigger backend scan + stream logs
   btn.onclick = async () => {
     btn.disabled = true;
     addLog("▶ Screener starting...");
 
+    // Streaming live logs
     const evtSource = new EventSource("https://mrt-email-screener.onrender.com/stream");
     evtSource.onmessage = (e) => addLog(e.data);
-    evtSource.onerror = () => addLog("⚠️ Lost connection to stream. Reconnecting...");
 
     const res = await fetch("https://mrt-email-screener.onrender.com/run");
     if (res.ok) addLog("🟢 Screener triggered successfully.");
     else addLog("❌ Could not trigger screener.");
 
-    // load report 2 mins later
-    setTimeout(loadReport, 120000);
+    // ✅ Load results soon after scan finishes
+    setTimeout(loadReport, 3000);
     btn.disabled = false;
   };
+
+  // ✅ Auto load latest table on page load
+  loadReport();
 </script>
 </body>
 </html>
