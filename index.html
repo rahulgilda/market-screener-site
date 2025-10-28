@@ -114,6 +114,8 @@
 <script>
   const btn = document.getElementById('runBtn');
   const logbox = document.getElementById('logbox');
+  const container = document.getElementById('report-container');
+  let lastTimestamp = null;
 
   function addLog(msg) {
     const time = new Date().toLocaleTimeString();
@@ -121,62 +123,74 @@
     logbox.scrollTop = logbox.scrollHeight;
   }
 
-  async function loadReport() {
-    const container = document.getElementById("report-container");
-    container.innerHTML = "⏳ Loading latest report...";
-  
+  async function loadReport(force = false) {
     try {
-      const res = await fetch(
-        "https://rahulgilda.github.io/market-screener-site/report.html?cache=" + Date.now(),
-        { cache: "no-store" }
-      );
+      const url = "https://rahulgilda.github.io/market-screener-site/report.html?cache=" + Date.now();
+      const res = await fetch(url, { cache: "no-store" });
       if (!res.ok) throw new Error("fetch failed");
-  
+
       const html = await res.text();
-  
-      // ✅ Replace old report entirely
-      container.innerHTML = "";
-      container.insertAdjacentHTML("beforeend", html);
-  
-      addLog("📈 Report updated.");
-    } catch (err) {
-      container.innerHTML = "<p style='color:orange;'>⚠️ No screener report available yet.</p>";
-      addLog("⚠️ Report not ready.");
+
+      const timestampMatch = html.match(/Last updated:\s*([\d-:\s]+)/);
+      const timestamp = timestampMatch ? timestampMatch[1].trim() : null;
+
+      if (!force && timestamp === lastTimestamp) return false; // no change yet
+
+      lastTimestamp = timestamp;
+      container.innerHTML = html;
+      addLog("📈 Report updated: " + (timestamp || "now"));
+      container.scrollIntoView({ behavior: "smooth" });
+
+      return true; // updated
+    }
+    catch {
+      return false;
     }
   }
 
+  async function waitForLatestReport() {
+    addLog("🔄 Waiting for GitHub Pages to update report...");
+    
+    let attempts = 0;
+    const maxAttempts = 20; // 20 * 5s = 100 sec max
 
-  // Load latest report when page first opens
-  loadReport();
+    const interval = setInterval(async () => {
+      attempts++;
+      const updated = await loadReport();
+      if (updated) {
+        addLog("✅ New report live!");
+        clearInterval(interval);
+        btn.disabled = false;
+      }
+      if (attempts >= maxAttempts) {
+        addLog("⚠️ Timeout waiting for report update.");
+        clearInterval(interval);
+        btn.disabled = false;
+      }
+    }, 5000);
+  }
 
-  let evtSource = null;
+  // Load latest report on first visit
+  loadReport(true);
 
   btn.onclick = async () => {
     btn.disabled = true;
     addLog("▶ Screener starting...");
 
-    evtSource = new EventSource("https://mrt-email-screener.onrender.com/stream");
-    
+    const evtSource = new EventSource("https://mrt-email-screener.onrender.com/stream");
+
     evtSource.onmessage = (e) => {
       const msg = e.data;
       addLog(msg);
 
       if (msg.includes("Screener complete")) {
-        addLog("📈 Finalizing results...");
         evtSource.close();
-      
-        // ✅ Force refresh newest report after a slight delay
-        setTimeout(() => {
-          addLog("📈 Fetching latest report...");
-          loadReport();  // refresh table
-        }, 5000);
-      
-        btn.disabled = false;
+        waitForLatestReport(); // ✅ start watching for fresh update
       }
     };
 
     evtSource.onerror = () => {
-      addLog("⚠️ Live stream lost.");
+      addLog("⚠️ Lost stream connection.");
       evtSource.close();
       btn.disabled = false;
     };
@@ -186,5 +200,6 @@
     else addLog("❌ Could not trigger screener.");
   };
 </script>
+
 </body>
 </html>
