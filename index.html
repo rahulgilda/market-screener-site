@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>📊 Market Screener</title>
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 256 256'%3E%3Cpath fill='%2338d39f' d='M16 200h224v16H16z'/%3E%3Cpath fill='%2358a6ff' d='M40 168h24l22-30l18 14l34-54l24 18l30-46l20 12l-38 58l-24-18l-34 54l-22-16l-22 30H40z'/%3E%3C/svg%3E">
+
   <style>
     :root{
       --bg:#0d1117; --panel:#0f1620; --card:#121a25; --muted:#8b949e; --text:#e6edf3;
@@ -43,8 +44,10 @@
     .scan-img img{width:64px;height:64px;object-fit:contain;filter:saturate(1.2) brightness(1.05);transition:opacity .25s ease}
     .scanner h4{margin:0 0 6px;font-size:1.05rem}
     .muted{color:var(--muted)}
+
     .progress{width:100%;height:9px;background:#0a0f16;border:1px solid rgba(255,255,255,.06);border-radius:999px;overflow:hidden;margin:12px 0 10px}
     .bar{height:100%;width:0%;background:linear-gradient(90deg,var(--brand),#38d39f);box-shadow:0 0 18px rgba(56,211,159,.35) inset;transition:width .4s ease}
+
     .ticker-ribbon{margin-top:8px;color:#cfd9e5;font-size:.95rem;display:flex;align-items:center;gap:10px;white-space:nowrap;overflow:hidden}
     .chip{background:#0a1320;border:1px solid rgba(255,255,255,.06);padding:6px 10px;border-radius:999px;display:inline-flex;align-items:center;gap:8px}
     .chip svg{width:16px;height:16px;opacity:.9}
@@ -54,20 +57,13 @@
     .glow{color:#b7ffcf;text-shadow:0 0 12px rgba(56,211,159,.45);font-weight:600}
     .small{color:var(--muted);font-size:.92rem}
 
-    /* Hide any page footer entirely per request */
-    footer{
-      margin:24px 0 10px;
-      text-align:center;
-      color:var(--muted);
-      font-size:.9rem;
+    /* Modal */
+    #chartModal {
+      position:fixed; inset:0; display:none;
+      align-items:center; justify-content:center; z-index:9999;
+      backdrop-filter: blur(8px);
+      background:rgba(0,0,0,.55);
     }
-    footer a{
-      color:var(--brand);
-      text-decoration:none;
-      font-weight:500;
-    }
-    footer a:hover{ text-decoration:underline }
-    @media (max-width:860px){.stats{grid-template-columns:1fr 1fr}.scanner{grid-template-columns:1fr}.scan-img{justify-self:center}}
   </style>
 </head>
 <body>
@@ -80,7 +76,6 @@
       </div>
     </header>
 
-    <!-- Stat cards (same UI as your screenshot) -->
     <section class="stats">
       <div class="card"><h3>Portfolio ROI</h3><p class="up">0%</p></div>
       <div class="card"><h3>P&amp;L</h3><p>$0</p></div>
@@ -96,199 +91,155 @@
       </div>
     </div>
 
-    <!-- Scanner hero / progress -->
     <div class="scanner" id="scannerCard" aria-live="polite">
       <div class="scan-img">
         <img id="phaseGif" src="assets/icons8-combo-chart.gif" alt="Scanning">
       </div>
       <div>
         <h4 id="scanHeadline">Standing by</h4>
-        <div class="muted" id="scanSub">Press Run to analyze S&amp;P 500</div>
+        <div class="muted" id="scanSub">Press Run to analyze market</div>
         <div class="progress"><div id="bar" class="bar"></div></div>
         <div class="ticker-ribbon">
-          <span class="chip"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path fill="currentColor" d="M3 3h18v2H3zm4 5h14v2H7zm-4 5h18v2H3zm6 5h12v2H9z"/></svg> <span id="chipA">Analyzing S&amp;P500 signals…</span></span>
-          <span class="chip"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path fill="currentColor" d="M3 12h18l-9 9zM3 12l9-9l9 9z"/></svg> <span id="chipB">Filtering clean risk reward setups…</span></span>
-          <span class="chip"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path fill="currentColor" d="M11 2h2v20h-2zM2 11h20v2H2z"/></svg> <span id="chipC">Validating breakout confirmations…</span></span>
+          <span class="chip">Analyzing signals…</span>
+          <span class="chip">Filtering clean setups…</span>
+          <span class="chip">Validating breakouts…</span>
         </div>
       </div>
     </div>
 
-    <!-- Report (hidden by default; revealed only after a run completes) -->
     <section id="report-section">
       <div class="report-title">
-        <div><strong>Trend Confirmation Summary</strong> <span class="small">from GitHub Pages</span></div>
+        <div><strong>Trend Confirmation Summary</strong></div>
         <div id="reportTag" class="small">—</div>
       </div>
       <div id="reportBody" class="small" style="opacity:.95">Loading latest report…</div>
     </section>
+  </div>
 
-    <footer>
-      Powered by Human Intelligence · 
-      <a href="https://finance.yahoo.com/" target="_blank" rel="noopener noreferrer">
-        Data by Yahoo Finance
-      </a>
-    </footer>
+  <!-- Chart Modal -->
+  <div id="chartModal">
+    <div style="width:min(1100px,92vw);max-height:90vh;background:linear-gradient(180deg,#121a25,#0e1520);border:1px solid rgba(255,255,255,.08);border-radius:16px;box-shadow:0 12px 40px rgba(0,0,0,.45);overflow:hidden;display:grid;grid-template-columns:1.6fr 1fr;">
+      <div style="min-height:520px;background:#0b1220;border-right:1px solid rgba(255,255,255,.06);">
+        <iframe id="tvFrame" title="Chart" style="width:100%;height:100%;border:0"></iframe>
+      </div>
+      <div style="padding:16px;display:flex;flex-direction:column;gap:12px;">
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;">
+          <div>
+            <div id="cmTitle" style="font-weight:700;font-size:1.05rem">—</div>
+            <div id="cmSub" class="small" style="color:#8b949e">—</div>
+          </div>
+          <button id="cmClose" style="border:0;background:#1f2a3a;color:#cfd9e5;padding:8px 12px;border-radius:10px;cursor:pointer">✕</button>
+        </div>
+        <div class="card" style="background:#0f1620;border:1px solid rgba(255,255,255,.06);border-radius:12px;padding:12px;">
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;font-size:.98rem;">
+            <div><div class="muted">Price</div><div id="cmPrice" style="font-weight:600">—</div></div>
+            <div><div class="muted">RSI</div><div id="cmRSI" style="font-weight:600">—</div></div>
+            <div><div class="muted">ADX</div><div id="cmADX" style="font-weight:600">—</div></div>
+            <div><div class="muted">Earnings</div><div id="cmEarn" style="font-weight:600">—</div></div>
+          </div>
+        </div>
 
+        <div style="display:flex;gap:10px;flex-wrap:wrap">
+          <a id="btnTV" target="_blank" style="text-decoration:none;background:linear-gradient(135deg,#2ea043,#2bc06f);color:#fff;padding:10px 14px;border-radius:10px;font-weight:600">Open in TradingView</a>
+          <a id="btnYF" target="_blank" style="text-decoration:none;background:#1f2a3a;color:#fff;padding:10px 14px;border-radius:10px;font-weight:600">Open on Yahoo Finance</a>
+          <button id="btnWL" style="border:0;background:#2d3748;color:#fff;padding:10px 14px;border-radius:10px;font-weight:600;cursor:pointer">Add to Watchlist</button>
+        </div>
+
+        <div class="small" style="color:#8b949e;margin-top:auto;">
+          Tip: Open full terminals for deeper TA or options chains.
+        </div>
+      </div>
+    </div>
   </div>
 
 <script>
-  // Elements
-  const btn = document.getElementById('runBtn');
-  const statusText = document.getElementById('statusText');
-  const bar = document.getElementById('bar');
-  const scanHeadline = document.getElementById('scanHeadline');
-  const scanSub = document.getElementById('scanSub');
-  const phaseGif = document.getElementById('phaseGif');
-  const reportSection = document.getElementById('report-section');
-  const reportBody = document.getElementById('reportBody');
-  const reportTag = document.getElementById('reportTag');
+  // Watchlist
+  const WL_KEY = "watchlist";
+  function getWL(){ try{ return JSON.parse(localStorage.getItem(WL_KEY) || "[]"); }catch{ return []; } }
+  function setWL(arr){ localStorage.setItem(WL_KEY, JSON.stringify(Array.from(new Set(arr)))); }
 
-  // Always hide embedded report on load
-  reportSection.style.display = 'none';
+  // Modal elements
+  const chartModal = document.getElementById('chartModal');
+  const cmClose = document.getElementById('cmClose');
+  const tvFrame = document.getElementById('tvFrame');
+  const cmTitle = document.getElementById('cmTitle');
+  const cmSub = document.getElementById('cmSub');
+  const cmPrice = document.getElementById('cmPrice');
+  const cmRSI = document.getElementById('cmRSI');
+  const cmADX = document.getElementById('cmADX');
+  const cmEarn = document.getElementById('cmEarn');
+  const btnTV = document.getElementById('btnTV');
+  const btnYF = document.getElementById('btnYF');
+  const btnWL = document.getElementById('btnWL');
 
-  // Phase GIFs
-  const GIFS = {
-    idle: 'assets/icons8-combo-chart.gif',
-    analyze: 'assets/icons8-search.gif',
-    filter: 'assets/icons8-improvement.gif',
-    validate: 'assets/icons8-combo-chart.gif',
-    publish: 'assets/icons8-rocket.gif',
-    done: 'assets/icons8-done.gif'
-  };
+  cmClose.onclick = ()=>{ chartModal.style.display = 'none'; tvFrame.src = 'about:blank'; };
+  chartModal.onclick = (e)=>{ if(e.target === chartModal){ cmClose.click(); } };
 
-  // Preload
-  Object.values(GIFS).forEach(src => { const i = new Image(); i.src = src; });
-
-  let progressTimer = null;
-  let evtSource = null;
-
-  function setStatus(text){ statusText.textContent = text; }
-  function setHeadline(h, sub){ scanHeadline.textContent = h; scanSub.textContent = sub; }
-  function setGif(key){
-    phaseGif.style.opacity = '0';
-    setTimeout(()=>{ phaseGif.src = GIFS[key] || GIFS.idle; phaseGif.style.opacity = '1'; }, 150);
+  function tvEmbedURL(tvSymbol){
+    const params = new URLSearchParams({ symbol: tvSymbol, interval:'D', theme:'dark' });
+    return `https://s.tradingview.com/widgetembed/?${params.toString()}`;
   }
 
-  function startProgress(){
-    stopProgress();
-    let p = 0;
-    bar.style.width = '0%';
-    progressTimer = setInterval(()=>{
-      p = Math.min(92, p + Math.random()*3.5 + 1.5);
-      bar.style.width = p.toFixed(1)+'%';
-    }, 600);
-  }
-  function stopProgress(final=100){
-    if (progressTimer) clearInterval(progressTimer);
-    if (final != null) bar.style.width = final+'%';
-  }
-
-  async function fetchReportOnce(){
+  async function openChartModal(ticker){
     try{
-      const url = "https://rahulgilda.github.io/market-screener-site/report.html?cache=" + Date.now();
-      const res = await fetch(url, { cache: "no-store" });
-      if(!res.ok) return false;
+      const res = await fetch(`/syminfo?t=${encodeURIComponent(ticker)}`, { cache:'no-store' });
+      if(!res.ok) throw 0;
 
-      let html = await res.text();
+      const data = await res.json();
+      const exch = (data.exchange || "NASDAQ").toUpperCase();
+      const name = data.name || ticker;
+      const tvSym = `${exch}:${ticker}`;
 
-      // Capture timestamp first
-      const tsMatch = html.match(/Last updated:\s*([0-9:\-\s]+)/i);
-      const utcString = tsMatch ? tsMatch[1].trim() : null;
+      cmTitle.textContent = `${ticker} · ${name}`;
+      cmSub.textContent = exch;
+      cmPrice.textContent = data.price ? `$${data.price}` : "—";
+      cmRSI.textContent = data.rsi ?? "—";
+      cmADX.textContent = data.adx ?? "—";
+      cmEarn.textContent = data.next_earnings || "—";
 
-      // Strip heading block through "Last updated:" line
-      html = html.replace(/<h2>[\s\S]*?Last updated:[^\n<]*\n?/i, "");
-      // Strip any Powered by footer if present inside the embedded HTML
-      html = html.replace(/Powered by[\s\S]*$/i, "");
+      tvFrame.src = tvEmbedURL(tvSym);
+      btnTV.href = `https://www.tradingview.com/chart/?symbol=${tvSym}`;
+      btnYF.href = `https://finance.yahoo.com/quote/${ticker}`;
+      btnWL.onclick = ()=>{ const wl = getWL(); wl.push(ticker); setWL(wl); btnWL.textContent = "Added"; };
 
-      // Convert UTC to local display
-      let localText = "just now";
-      if (utcString){
-        const d = new Date(utcString + " UTC");
-        localText = d.toLocaleString(undefined, {year:"numeric", month:"short", day:"numeric", hour:"2-digit", minute:"2-digit"});
-      }
-
-      reportBody.innerHTML = html.trim();
-      reportTag.innerHTML = `<span class="glow">Live</span> · ${localText}`;
-      reportSection.style.display = 'block';
-      reportSection.scrollIntoView({ behavior: 'smooth' });
-      return true;
-    }catch(e){ return false; }
-  }
-
-  function waitForGithubUpdate(){
-    setStatus('Publishing results...');
-    setGif('publish');
-    let attempts = 0;
-    const maxAttempts = 24; // about 2 minutes
-    const timer = setInterval(async ()=>{
-      attempts++;
-      const ok = await fetchReportOnce();
-      if (ok){
-        setStatus('Report ready');
-        setGif('done');
-        stopProgress(100);
-        clearInterval(timer);
-        btn.disabled = false;
-      } else if (attempts >= maxAttempts){
-        setStatus('Timeout waiting for GitHub Pages');
-        stopProgress(null);
-        clearInterval(timer);
-        btn.disabled = false;
-      }
-    }, 5000);
-  }
-
-  btn.onclick = async ()=>{
-    btn.disabled = true;
-    // Hide any previous results until this run finishes
-    reportSection.style.display = 'none';
-
-    // Reset UI
-    setGif('analyze');
-    setHeadline('Warming up signals', 'Analyzing S&P500 signals…');
-    setStatus('Screener running...');
-    startProgress();
-
-    // Start server sent events
-    if (evtSource) { try{ evtSource.close(); }catch{} }
-    evtSource = new EventSource('https://mrt-email-screener.onrender.com/stream');
-
-    evtSource.onmessage = (e)=>{
-      const msg = e.data || '';
-      if (msg.includes('keepalive')) return;
-
-      if (msg.includes('Starting Market Screener')){
-        setGif('filter');
-        setHeadline('Scanning market', 'Filtering clean risk reward setups…');
-      }
-      if (msg.includes('Downloading batch')){
-        setGif('validate');
-        setHeadline('Crunching data', 'Validating breakout confirmations…');
-      }
-      if (msg.includes('Screener complete')){
-        setHeadline('Finalizing', 'Publishing results to dashboard...');
-        try{ evtSource.close(); }catch{}
-        waitForGithubUpdate();
-      }
-    };
-
-    evtSource.onerror = ()=>{
-      try{ evtSource.close(); }catch{}
-      setStatus('Live stream disconnected - will still publish results');
-    };
-
-    // Trigger backend run
-    try{
-      const res = await fetch('https://mrt-email-screener.onrender.com/run');
-      if(!res.ok) setStatus('Could not start screener');
+      chartModal.style.display = 'flex';
     }catch{
-      setStatus('Could not reach backend');
-      btn.disabled = false;
-      stopProgress(null);
-      setGif('idle');
-      setHeadline('Standing by', 'Press Run to analyze S&P 500');
+      cmTitle.textContent = ticker;
+      cmSub.textContent = "NASDAQ";
+      cmPrice.textContent = cmRSI.textContent = cmADX.textContent = cmEarn.textContent = "—";
+      tvFrame.src = tvEmbedURL(`NASDAQ:${ticker}`);
+      chartModal.style.display = 'flex';
     }
-  };
+  }
+
+  function enhanceReportTable(){
+    const tbl = reportBody.querySelector('table');
+    if(!tbl) return;
+
+    const theadRow = tbl.querySelector('thead tr');
+    if (theadRow && ![...theadRow.children].some(th => th.textContent.trim().toLowerCase() === 'chart')){
+      const th = document.createElement('th');
+      th.textContent = 'Chart';
+      theadRow.appendChild(th);
+    }
+
+    const rows = tbl.querySelectorAll('tbody tr');
+    rows.forEach(tr=>{
+      const tradeText = tr.children[0]?.textContent || '';
+      const ticker = tradeText.split(/[ ,]/)[0].trim();
+      const td = document.createElement('td');
+      const btn = document.createElement('button');
+      btn.textContent = '📈 View Chart';
+      btn.style = 'border:0;background:#2ea043;color:#fff;padding:8px 10px;border-radius:8px;cursor:pointer';
+      btn.onclick = ()=> openChartModal(ticker);
+      td.appendChild(btn);
+      tr.appendChild(td);
+    });
+
+    const hits = rows.length;
+    const insightsText = hits === 0 ? 'No setups' : `✅ ${hits} bullish setups`;
+    reportTag.innerHTML = `<span class="glow">${insightsText}</span>`;
+  }
 </script>
 </body>
 </html>
